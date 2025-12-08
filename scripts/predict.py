@@ -13,6 +13,7 @@ Uso:
 import argparse
 from pathlib import Path
 import sys
+import numpy as np
 
 # Agregar src al path
 sys.path.append(str(Path(__file__).parent.parent))
@@ -251,7 +252,6 @@ def main():
                 all_confidences.extend(result.boxes.conf.cpu().numpy().tolist())
         
         if all_confidences:
-            import numpy as np
             print(f"  - Confianza promedio: {np.mean(all_confidences):.3f}")
             print(f"  - Confianza máxima: {np.max(all_confidences):.3f}")
             print(f"  - Confianza mínima: {np.min(all_confidences):.3f}")

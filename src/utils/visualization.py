@@ -38,9 +38,9 @@ class ResultsVisualizer:
         colors = []
         for _ in range(n):
             colors.append((
-                int(np.random.randint(0, 255)),
-                int(np.random.randint(0, 255)),
-                int(np.random.randint(0, 255))
+                np.random.randint(0, 255),
+                np.random.randint(0, 255),
+                np.random.randint(0, 255)
             ))
         return colors
     
@@ -76,8 +76,8 @@ class ResultsVisualizer:
                 conf = float(box.conf[0])
                 cls = int(box.cls[0])
                 
-                # Dibujar caja
-                color = self.colors[cls % len(self.colors)]
+                # Dibujar caja (asegurando colores únicos para hasta 80 clases)
+                color = self.colors[cls % len(self.colors)] if cls < len(self.colors) else (255, 0, 0)
                 cv2.rectangle(img, (x1, y1), (x2, y2), color, 2)
                 
                 # Dibujar etiqueta
