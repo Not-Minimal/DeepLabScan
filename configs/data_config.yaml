@@ -1,0 +1,33 @@
+# Data Configuration
+# Update this file with your dataset information
+
+# Dataset paths
+path: data/roboflow  # Root directory of the dataset
+train: train/images  # Training images (relative to 'path')
+val: valid/images    # Validation images (relative to 'path')
+test: test/images    # Test images (relative to 'path')
+
+# Class names
+# Update with your actual class names from Roboflow
+names:
+  0: class_name_1
+  # Add more classes as needed
+  # 1: class_name_2
+  # 2: class_name_3
+
+# Number of classes
+nc: 1  # Update based on your dataset
+
+# Dataset information
+info:
+  description: "YOLO dataset exported from Roboflow"
+  version: "1.0"
+  year: 2024
+  contributor: "Your Name"
+  date_created: "2024-12-08"
+
+# Roboflow settings (optional)
+roboflow:
+  workspace: ""  # Your Roboflow workspace
+  project: ""    # Your Roboflow project name
+  version: 1     # Dataset version
