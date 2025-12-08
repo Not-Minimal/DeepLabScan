@@ -1,0 +1,66 @@
+# Training Configuration Template
+# Customize these parameters for your YOLO training
+
+# Model settings
+model:
+  architecture: yolov8n  # Options: yolov5s, yolov5m, yolov8n, yolov8s, yolov8m
+  pretrained: true
+  num_classes: 1  # Update based on your dataset
+
+# Dataset settings
+data:
+  train_path: data/roboflow/train
+  val_path: data/roboflow/valid
+  test_path: data/roboflow/test
+  img_size: 640
+  batch_size: 16
+  workers: 4
+
+# Training hyperparameters
+training:
+  epochs: 100
+  patience: 50  # Early stopping patience
+  optimizer: Adam  # Options: Adam, SGD, AdamW
+  learning_rate: 0.001
+  momentum: 0.937  # For SGD
+  weight_decay: 0.0005
+  warmup_epochs: 3
+  warmup_momentum: 0.8
+  warmup_bias_lr: 0.1
+
+# Augmentation settings
+augmentation:
+  hsv_h: 0.015  # HSV-Hue augmentation
+  hsv_s: 0.7    # HSV-Saturation augmentation
+  hsv_v: 0.4    # HSV-Value augmentation
+  degrees: 0.0  # Rotation (+/- deg)
+  translate: 0.1  # Translation (+/- fraction)
+  scale: 0.5    # Scale (+/- gain)
+  shear: 0.0    # Shear (+/- deg)
+  perspective: 0.0  # Perspective (+/- fraction)
+  flipud: 0.0   # Flip up-down probability
+  fliplr: 0.5   # Flip left-right probability
+  mosaic: 1.0   # Mosaic augmentation probability
+  mixup: 0.0    # MixUp augmentation probability
+
+# Validation settings
+validation:
+  iou_threshold: 0.6
+  conf_threshold: 0.001
+  save_hybrid: false
+  save_json: true
+
+# Logging and checkpoints
+logging:
+  project_name: DeepLabScan
+  experiment_name: yolo_training
+  save_dir: results/
+  save_period: 10  # Save checkpoint every N epochs
+  log_frequency: 10  # Log metrics every N batches
+  tensorboard: true
+  wandb: false  # Set to true if using Weights & Biases
+
+# Hardware settings
+device:
+  gpu: 0  # GPU device ID, -1 for CPU
+  multi_gpu: false

@@ -1,0 +1,50 @@
+# Core dependencies for YOLO object detection project
+
+# Deep Learning Framework
+torch>=2.0.0
+torchvision>=0.15.0
+
+# YOLO implementations
+ultralytics>=8.0.0  # YOLOv8
+# yolov5  # Uncomment if using YOLOv5
+
+# Computer Vision
+opencv-python>=4.8.0
+opencv-contrib-python>=4.8.0
+Pillow>=10.0.0
+
+# Data handling
+numpy>=1.24.0
+pandas>=2.0.0
+matplotlib>=3.7.0
+seaborn>=0.12.0
+
+# Configuration and utilities
+PyYAML>=6.0
+tqdm>=4.65.0
+requests>=2.31.0
+
+# Roboflow integration
+roboflow>=1.1.0
+
+# Metrics and evaluation
+scikit-learn>=1.3.0
+scipy>=1.11.0
+
+# Visualization and logging
+tensorboard>=2.13.0
+# wandb  # Uncomment if using Weights & Biases
+
+# Jupyter notebooks
+jupyter>=1.0.0
+ipykernel>=6.25.0
+ipywidgets>=8.1.0
+
+# Testing
+pytest>=7.4.0
+pytest-cov>=4.1.0
+
+# Development tools
+black>=23.7.0  # Code formatter
+flake8>=6.1.0  # Linter
+isort>=5.12.0  # Import sorter
