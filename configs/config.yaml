@@ -1,0 +1,72 @@
+# Configuración del Proyecto DeepLabScan
+
+# Modelo YOLO
+model:
+  name: 'yolov8n.pt'  # yolov8n, yolov8s, yolov8m, yolov8l, yolov8x
+  pretrained: true
+
+# Datos Roboflow
+roboflow:
+  workspace: 'tu_workspace'  # Reemplazar con tu workspace
+  project: 'tu_proyecto'     # Reemplazar con tu proyecto
+  version: 1
+  
+# Entrenamiento
+training:
+  epochs: 100
+  batch: 16
+  imgsz: 640
+  device: 'cpu'  # cpu, cuda, mps, 0, 1, etc.
+  patience: 50
+  project: 'runs/train'
+  name: 'exp'
+  
+  # Hiperparámetros
+  lr0: 0.01  # learning rate inicial
+  lrf: 0.01  # learning rate final
+  momentum: 0.937
+  weight_decay: 0.0005
+  warmup_epochs: 3.0
+  warmup_momentum: 0.8
+  warmup_bias_lr: 0.1
+  
+  # Optimización
+  optimizer: 'auto'  # auto, SGD, Adam, AdamW, NAdam, RAdam, RMSProp
+  close_mosaic: 10  # épocas antes de desactivar mosaic augmentation
+
+# Aumentación de datos
+augmentation:
+  hsv_h: 0.015
+  hsv_s: 0.7
+  hsv_v: 0.4
+  degrees: 0.0
+  translate: 0.1
+  scale: 0.5
+  shear: 0.0
+  perspective: 0.0
+  flipud: 0.0
+  fliplr: 0.5
+  mosaic: 1.0
+  mixup: 0.0
+  copy_paste: 0.0
+
+# Evaluación
+evaluation:
+  conf: 0.25  # confidence threshold
+  iou: 0.7    # IoU threshold para NMS
+  max_det: 300  # máximo de detecciones por imagen
+  
+# Predicción
+prediction:
+  conf: 0.25
+  iou: 0.7
+  max_det: 300
+  save: true
+  save_txt: true
+  save_conf: true
+
+# Rutas
+paths:
+  data: 'data/raw'
+  results: 'results'
+  logs: 'logs'
