@@ -2,12 +2,13 @@
 Setup configuration for DeepLabScan
 """
 
-from setuptools import setup, find_packages
 from pathlib import Path
+
+from setuptools import find_packages, setup
 
 # Read README
 this_directory = Path(__file__).parent
-long_description = (this_directory / "README.md").read_text(encoding='utf-8')
+long_description = (this_directory / "README.md").read_text(encoding="utf-8")
 
 setup(
     name="deeplabscan",
@@ -34,25 +35,25 @@ setup(
     ],
     python_requires=">=3.8",
     install_requires=[
-        "ultralytics>=8.0.0",
-        "torch>=2.0.0",
-        "torchvision>=0.15.0",
-        "opencv-python>=4.8.0",
-        "numpy>=1.24.0",
-        "matplotlib>=3.7.0",
-        "pillow>=10.0.0",
-        "roboflow>=1.1.0",
-        "pyyaml>=6.0",
-        "tqdm>=4.65.0",
-        "scikit-learn>=1.3.0",
-        "pandas>=2.0.0",
-        "seaborn>=0.12.0",
-        "python-dotenv>=1.0.0",
+        "ultralytics>=8.3.235",
+        "torch>=2.9.1",
+        "torchvision>=0.24.1",
+        "opencv-python>=4.12.0.88",
+        "numpy>=2.3.5",
+        "matplotlib>=3.10.7",
+        "pillow>=12.0.0",
+        "roboflow>=1.2.11",
+        "pyyaml>=6.0.3",
+        "tqdm>=4.67.1",
+        "scikit-learn>=1.7.2",
+        "pandas>=2.3.3",
+        "seaborn>=0.13.2",
+        "python-dotenv>=1.2.1",
     ],
     extras_require={
         "dev": [
-            "pytest>=7.4.0",
-            "pytest-cov>=4.1.0",
+            "pytest>=9.0.2",
+            "pytest-cov>=7.0.0",
         ],
     },
     entry_points={
