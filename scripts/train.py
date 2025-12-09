@@ -206,20 +206,23 @@ def main():
         print("✓ ENTRENAMIENTO COMPLETADO")
         print("=" * 60)
 
-        # Construir ruta de salida
-        output_dir = Path(args.project) / args.name
-        weights_path = output_dir / "weights" / "best.pt"
-
-        # Buscar el directorio train más reciente si no existe
-        if not weights_path.exists():
+        # Obtener el directorio real donde YOLO guardó los resultados
+        # YOLO puede haber cambiado el nombre (ej: train -> train2)
+        if hasattr(train_results, "save_dir"):
+            output_dir = Path(train_results.save_dir)
+        else:
+            # Fallback: buscar el directorio más reciente
             train_dirs = sorted(
-                Path(args.project).glob("train*"),
+                Path(args.project).glob(f"{args.name}*"),
                 key=lambda x: x.stat().st_mtime,
                 reverse=True,
             )
             if train_dirs:
                 output_dir = train_dirs[0]
-                weights_path = output_dir / "weights" / "best.pt"
+            else:
+                output_dir = Path(args.project) / args.name
+
+        weights_path = output_dir / "weights" / "best.pt"
 
         print(f"\n📁 Resultados guardados en: {output_dir}")
         if weights_path.exists():
