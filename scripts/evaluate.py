@@ -1,235 +1,387 @@
 #!/usr/bin/env python3
 """
-Script de Evaluación YOLO
+Script de Evaluación YOLO - Adaptado de tarea_3.py
 
-Evalúa un modelo YOLO entrenado y genera métricas.
+Este script evalúa un modelo YOLO entrenado y muestra/guarda visualizaciones:
+1. Carga el modelo entrenado
+2. Ejecuta validación con model.val()
+3. Muestra métricas (Precision, Recall, mAP, F1)
+4. Visualiza gráficos generados (confusion matrix, curves, etc.)
 
 Uso:
-    python scripts/evaluate.py --weights runs/train/exp/weights/best.pt
-    python scripts/evaluate.py --weights best.pt --data data.yaml --device cuda
+    python scripts/evaluate.py --weights runs/detect/train/weights/best.pt
+    python scripts/evaluate.py --weights runs/detect/train/weights/best.pt --data-dir data/raw
+    python scripts/evaluate.py --weights best.pt --device cuda --save-plots
 """
 
 import argparse
-import yaml
-from pathlib import Path
+import os
 import sys
+from pathlib import Path
 
-# Agregar src al path
-sys.path.append(str(Path(__file__).parent.parent))
-
-from ultralytics import YOLO
-from src.evaluation import MetricsCalculator
-from src.utils import ResultsVisualizer
-
-
-def parse_args():
-    """Parsea argumentos de línea de comandos."""
-    parser = argparse.ArgumentParser(description='Evaluar modelo YOLO')
-    
-    # Modelo
-    parser.add_argument(
-        '--weights',
-        type=str,
-        required=True,
-        help='Ruta a los pesos del modelo (.pt)'
-    )
-    
-    # Datos
-    parser.add_argument(
-        '--data',
-        type=str,
-        help='Ruta al archivo data.yaml'
-    )
-    
-    # Evaluación
-    parser.add_argument(
-        '--split',
-        type=str,
-        default='val',
-        choices=['val', 'test'],
-        help='Conjunto a evaluar (val o test)'
-    )
-    parser.add_argument(
-        '--device',
-        type=str,
-        default='cpu',
-        help='Dispositivo (cpu, cuda, mps, 0, 1, etc.)'
-    )
-    parser.add_argument(
-        '--conf',
-        type=float,
-        default=0.25,
-        help='Confidence threshold'
-    )
-    parser.add_argument(
-        '--iou',
-        type=float,
-        default=0.7,
-        help='IoU threshold para NMS'
-    )
-    
-    # Salida
-    parser.add_argument(
-        '--save-report',
-        type=str,
-        help='Ruta para guardar reporte de evaluación'
-    )
-    parser.add_argument(
-        '--save-plots',
-        action='store_true',
-        help='Guardar gráficas de métricas'
-    )
-    parser.add_argument(
-        '--output-dir',
-        type=str,
-        default='results/evaluation',
-        help='Directorio para guardar resultados'
-    )
-    
-    return parser.parse_args()
+try:
+    import matplotlib.image as mpimg
+    import matplotlib.pyplot as plt
+    from ultralytics import YOLO
+except ImportError:
+    print("❌ Error: Se requieren ultralytics y matplotlib")
+    print("Instala con: pip install ultralytics matplotlib")
+    sys.exit(1)
 
 
-def load_config(config_path: str) -> dict:
-    """Carga configuración desde archivo YAML."""
-    config_file = Path(config_path)
-    if not config_file.exists():
-        return {}
-    
-    with open(config_file, 'r', encoding='utf-8') as f:
-        return yaml.safe_load(f)
+def find_validation_results(weights_path):
+    """
+    Encuentra el directorio de resultados de validación más reciente.
+    Busca en runs/detect/val* o en la estructura relativa a los pesos.
+    """
+    weights_path = Path(weights_path)
+
+    # Intentar encontrar directorio de validación relativo a los pesos
+    # Estructura típica: runs/detect/train/weights/best.pt
+    # Validación: runs/detect/val o runs/detect/val2, etc.
+
+    if weights_path.parent.name == "weights":
+        # Subir dos niveles: weights -> train -> detect
+        detect_dir = weights_path.parent.parent.parent
+        if detect_dir.exists():
+            # Buscar directorios val* ordenados por fecha
+            val_dirs = sorted(
+                detect_dir.glob("val*"), key=lambda x: x.stat().st_mtime, reverse=True
+            )
+            if val_dirs:
+                return val_dirs[0]
+
+    # Fallback: buscar en runs/detect/val*
+    runs_detect = Path("runs/detect")
+    if runs_detect.exists():
+        val_dirs = sorted(
+            runs_detect.glob("val*"), key=lambda x: x.stat().st_mtime, reverse=True
+        )
+        if val_dirs:
+            return val_dirs[0]
+
+    return None
+
+
+def display_or_save_plot(image_path, title, save_dir=None, show=True):
+    """
+    Muestra o guarda un gráfico desde un archivo de imagen.
+    """
+    if not os.path.exists(image_path):
+        print(f"  ⚠️  No se encontró: {image_path}")
+        return False
+
+    try:
+        img = mpimg.imread(image_path)
+
+        if show:
+            # Mostrar en pantalla
+            fig, ax = plt.subplots(figsize=(10, 8))
+            ax.imshow(img)
+            ax.set_title(title)
+            ax.axis("off")
+            plt.tight_layout()
+            plt.show()
+
+        if save_dir:
+            # Guardar copia en directorio de salida
+            save_path = Path(save_dir) / Path(image_path).name
+            save_path.parent.mkdir(parents=True, exist_ok=True)
+            plt.figure(figsize=(10, 8))
+            plt.imshow(img)
+            plt.title(title)
+            plt.axis("off")
+            plt.tight_layout()
+            plt.savefig(save_path, dpi=150, bbox_inches="tight")
+            plt.close()
+            print(f"  ✓ Guardado: {save_path}")
+
+        return True
+    except Exception as e:
+        print(f"  ⚠️  Error al procesar {image_path}: {e}")
+        return False
 
 
 def main():
-    """Función principal."""
-    args = parse_args()
-    
-    print("="*60)
+    parser = argparse.ArgumentParser(description="Evaluación de modelo YOLO")
+    parser.add_argument(
+        "--weights",
+        type=str,
+        required=True,
+        help="Ruta a los pesos del modelo (.pt)",
+    )
+    parser.add_argument(
+        "--data-dir",
+        type=str,
+        default=None,
+        help="Directorio del dataset (contiene data.yaml). Si no se especifica, se buscará automáticamente",
+    )
+    parser.add_argument(
+        "--device",
+        type=str,
+        default=None,
+        help="Dispositivo (cpu, cuda, mps, 0, 1). Auto-detect si no se especifica",
+    )
+    parser.add_argument(
+        "--save-plots",
+        action="store_true",
+        help="Guardar gráficos en results/evaluation/",
+    )
+    parser.add_argument(
+        "--no-show",
+        action="store_true",
+        help="No mostrar gráficos en pantalla (útil en servidores sin display)",
+    )
+    parser.add_argument(
+        "--split",
+        type=str,
+        default="val",
+        choices=["val", "test"],
+        help="Split a evaluar (default: val)",
+    )
+
+    args = parser.parse_args()
+
+    print("=" * 60)
     print("EVALUACIÓN DE MODELO YOLO")
-    print("="*60)
-    
-    # Verificar pesos
+    print("=" * 60)
+
+    # Verificar que existen los pesos
     weights_path = Path(args.weights)
     if not weights_path.exists():
         print(f"\n❌ Error: No se encontraron los pesos: {args.weights}")
+        print("\nAsegúrate de haber entrenado el modelo primero:")
+        print("  python scripts/train.py --data-dir data/raw --epochs 15")
         sys.exit(1)
-    
-    print(f"\n1. Cargando modelo: {args.weights}")
-    model = YOLO(args.weights)
-    
-    # Configurar datos
-    data_yaml = args.data
-    if not data_yaml:
-        # Intentar encontrar data.yaml
+
+    print(f"\n[1/4] Cargando modelo...")
+    print(f"  - Pesos: {weights_path}")
+
+    try:
+        model = YOLO(str(weights_path))
+    except Exception as e:
+        print(f"❌ Error al cargar el modelo: {e}")
+        sys.exit(1)
+
+    # Buscar data.yaml
+    data_yaml = None
+    if args.data_dir:
+        data_yaml = Path(args.data_dir) / "data.yaml"
+        if not data_yaml.exists():
+            print(f"❌ Error: No se encontró {data_yaml}")
+            sys.exit(1)
+    else:
+        # Intentar encontrar data.yaml automáticamente
         possible_paths = [
-            Path('data/raw/data.yaml'),
-            Path('data.yaml'),
-            weights_path.parent.parent.parent / 'data.yaml'
+            Path("data/raw/data.yaml"),
+            Path("data.yaml"),
+            weights_path.parent.parent.parent / "data.yaml",
         ]
         for path in possible_paths:
             if path.exists():
-                data_yaml = str(path)
+                data_yaml = path
                 break
-    
-    if not data_yaml or not Path(data_yaml).exists():
-        print("\n❌ Error: No se encontró data.yaml")
-        print("Especifica la ruta con --data")
-        sys.exit(1)
-    
-    print(f"2. Usando datos: {data_yaml}")
-    print(f"3. Evaluando en conjunto: {args.split}")
-    print(f"4. Dispositivo: {args.device}")
-    print("="*60 + "\n")
-    
-    # Crear calculador de métricas
-    calculator = MetricsCalculator(model, data_yaml)
-    
-    # Evaluar
-    metrics = calculator.evaluate(
-        split=args.split,
-        device=args.device,
-        verbose=True
-    )
-    
-    # Guardar reporte
-    output_dir = Path(args.output_dir)
-    output_dir.mkdir(parents=True, exist_ok=True)
-    
-    report_path = args.save_report or str(output_dir / 'evaluation_report.txt')
-    report = calculator.generate_report(save_path=report_path)
-    print("\n" + report)
-    
-    # Crear visualizaciones
-    if args.save_plots:
-        print("\n5. Generando visualizaciones...")
-        visualizer = ResultsVisualizer()
-        
-        # Buscar archivos de resultados
-        val_dir = weights_path.parent.parent
-        
-        # Resumen de métricas
-        visualizer.create_results_summary(
-            metrics,
-            save_path=output_dir / 'metrics_summary.png',
-            show=False
+
+        if not data_yaml:
+            print("❌ Error: No se encontró data.yaml")
+            print("\nEspecifica el directorio del dataset:")
+            print("  python scripts/evaluate.py --weights best.pt --data-dir data/raw")
+            sys.exit(1)
+
+    print(f"  - Dataset: {data_yaml}")
+
+    # Detectar dispositivo si no se especificó
+    if args.device:
+        device = args.device
+    else:
+        import torch
+
+        if torch.cuda.is_available():
+            device = 0
+        elif hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
+            device = "mps"
+        else:
+            device = "cpu"
+
+    print(f"  - Dispositivo: {device}")
+    print(f"  - Split: {args.split}")
+
+    # Evaluar modelo
+    print(f"\n[2/4] Ejecutando validación...")
+    print("-" * 60)
+
+    try:
+        metrics = model.val(
+            data=str(data_yaml),
+            split=args.split,
+            device=device,
+            plots=True,
+            save_json=True,
+            verbose=True,
         )
-        print(f"   ✓ Resumen de métricas: {output_dir / 'metrics_summary.png'}")
-        
-        # Gráficas de entrenamiento si existen
-        results_csv = val_dir / 'results.csv'
-        if results_csv.exists():
-            visualizer.plot_training_metrics(
-                str(results_csv),
-                save_path=output_dir / 'training_metrics.png',
-                show=False
+
+        print("-" * 60)
+    except Exception as e:
+        print(f"❌ Error durante la evaluación: {e}")
+        import traceback
+
+        traceback.print_exc()
+        sys.exit(1)
+
+    # Mostrar métricas principales
+    print(f"\n[3/4] Resumen de Métricas")
+    print("=" * 60)
+
+    # Extraer métricas del objeto results
+    try:
+        # Las métricas están en metrics.results_dict o metrics.box
+        if hasattr(metrics, "results_dict"):
+            results = metrics.results_dict
+        elif hasattr(metrics, "box"):
+            results = {
+                "metrics/precision(B)": metrics.box.p
+                if hasattr(metrics.box, "p")
+                else 0,
+                "metrics/recall(B)": metrics.box.r if hasattr(metrics.box, "r") else 0,
+                "metrics/mAP50(B)": metrics.box.map50
+                if hasattr(metrics.box, "map50")
+                else 0,
+                "metrics/mAP50-95(B)": metrics.box.map
+                if hasattr(metrics.box, "map")
+                else 0,
+            }
+        else:
+            results = {}
+
+        # Intentar extraer valores
+        precision = results.get("metrics/precision(B)", 0)
+        recall = results.get("metrics/recall(B)", 0)
+        map50 = results.get("metrics/mAP50(B)", 0)
+        map50_95 = results.get("metrics/mAP50-95(B)", 0)
+
+        print(f"Precision:      {precision:.4f}")
+        print(f"Recall:         {recall:.4f}")
+        print(f"mAP@0.5:        {map50:.4f}")
+        print(f"mAP@0.5:0.95:   {map50_95:.4f}")
+
+        # Calcular F1-Score
+        if precision > 0 or recall > 0:
+            f1 = (
+                2 * (precision * recall) / (precision + recall)
+                if (precision + recall) > 0
+                else 0
             )
-            print(f"   ✓ Métricas de entrenamiento: {output_dir / 'training_metrics.png'}")
-        
-        # Matriz de confusión si existe
-        confusion_matrix = val_dir / 'confusion_matrix.png'
-        if confusion_matrix.exists():
-            visualizer.plot_confusion_matrix(
-                str(confusion_matrix),
-                save_path=output_dir / 'confusion_matrix_viz.png',
-                show=False
+            print(f"F1-Score:       {f1:.4f}")
+
+        print("=" * 60)
+
+        # Interpretación
+        print("\n📊 Interpretación:")
+        if map50 >= 0.9:
+            print("  ✓ mAP@0.5 Excelente (≥0.9): Detección muy precisa")
+        elif map50 >= 0.7:
+            print("  ✓ mAP@0.5 Buena (0.7-0.9): Detección confiable")
+        elif map50 >= 0.5:
+            print(
+                "  ⚠️  mAP@0.5 Aceptable (0.5-0.7): Puede mejorar con más entrenamiento"
             )
-            print(f"   ✓ Matriz de confusión: {output_dir / 'confusion_matrix_viz.png'}")
-    
-    # Interpretación
-    print("\n" + "="*60)
-    print("INTERPRETACIÓN DE RESULTADOS")
-    print("="*60)
-    print(f"mAP@0.5: {calculator.interpret_map(metrics['map50'])}")
-    print(f"mAP@0.5:0.95: {calculator.interpret_map(metrics['map50_95'])}")
-    print("="*60)
-    
-    # F1-Score
-    f1 = calculator.calculate_f1_score(metrics['precision'], metrics['recall'])
-    print(f"\nF1-Score: {f1:.4f}")
-    
-    # Recomendaciones
-    print("\nRECOMENDACIONES:")
-    if metrics['precision'] < 0.5:
-        print("  ⚠️  Precision baja: muchos falsos positivos")
-        print("     → Aumenta el confidence threshold")
-        print("     → Añade más datos de entrenamiento")
-    if metrics['recall'] < 0.5:
-        print("  ⚠️  Recall bajo: muchos falsos negativos")
-        print("     → Disminuye el confidence threshold")
-        print("     → Revisa el etiquetado de datos")
-    if metrics['map50_95'] < 0.3:
-        print("  ⚠️  mAP bajo: el modelo necesita más entrenamiento")
-        print("     → Aumenta el número de épocas")
-        print("     → Ajusta la aumentación de datos")
-        print("     → Considera usar un modelo más grande")
-    
-    if metrics['map50_95'] >= 0.7:
-        print("  ✓ ¡Excelente rendimiento! El modelo está listo para producción.")
-    
-    print("\n" + "="*60)
+        else:
+            print(
+                "  ❌ mAP@0.5 Baja (<0.5): Se recomienda más entrenamiento o revisar datos"
+            )
+
+        if precision < 0.5:
+            print(
+                "  ⚠️  Precision baja: Muchos falsos positivos (aumenta confidence threshold)"
+            )
+        if recall < 0.5:
+            print(
+                "  ⚠️  Recall bajo: Muchos falsos negativos (disminuye confidence threshold)"
+            )
+
+    except Exception as e:
+        print(f"⚠️  No se pudieron extraer todas las métricas: {e}")
+
+    # Visualizar resultados
+    print(f"\n[4/4] Visualizaciones")
+    print("=" * 60)
+
+    # Buscar directorio de validación
+    val_dir = find_validation_results(weights_path)
+
+    if not val_dir:
+        print("⚠️  No se encontró directorio de validación con resultados")
+        print("   Los gráficos pueden estar en runs/detect/val*/")
+    else:
+        print(f"Directorio de resultados: {val_dir}")
+
+        save_dir = Path("results/evaluation") if args.save_plots else None
+        if save_dir:
+            save_dir.mkdir(parents=True, exist_ok=True)
+            print(f"Guardando gráficos en: {save_dir}")
+
+        show_plots = not args.no_show
+
+        # Lista de gráficos comunes generados por YOLO
+        plots = [
+            ("confusion_matrix.png", "Matriz de Confusión"),
+            ("confusion_matrix_normalized.png", "Matriz de Confusión Normalizada"),
+            ("F1_curve.png", "Curva F1-Score"),
+            ("P_curve.png", "Curva de Precision"),
+            ("R_curve.png", "Curva de Recall"),
+            ("PR_curve.png", "Curva Precision-Recall"),
+        ]
+
+        found_plots = False
+        for plot_file, title in plots:
+            plot_path = val_dir / plot_file
+            if display_or_save_plot(
+                plot_path, title, save_dir=save_dir, show=show_plots
+            ):
+                found_plots = True
+
+        # Buscar visualizaciones de predicciones si existen
+        viz_dir = val_dir / "visualizations"
+        if viz_dir.exists():
+            viz_images = list(viz_dir.glob("*.jpg")) + list(viz_dir.glob("*.png"))
+            if viz_images:
+                print(
+                    f"\n📸 Visualizaciones de predicciones: {len(viz_images)} imágenes"
+                )
+                print(f"   Ubicación: {viz_dir}")
+
+                # Mostrar algunas ejemplos si se pidió
+                if show_plots and len(viz_images) > 0:
+                    print("   Mostrando primeras 3 predicciones...")
+                    for img_path in viz_images[:3]:
+                        display_or_save_plot(
+                            img_path,
+                            f"Predicción: {img_path.name}",
+                            save_dir=save_dir,
+                            show=True,
+                        )
+
+        if not found_plots:
+            print("⚠️  No se encontraron gráficos de validación")
+            print(f"   Verifica manualmente en: {val_dir}")
+
+    print("\n" + "=" * 60)
     print("✓ EVALUACIÓN COMPLETADA")
-    print("="*60)
-    print(f"\nResultados guardados en: {output_dir}")
+    print("=" * 60)
+
+    if val_dir:
+        print(f"\n📁 Resultados completos en: {val_dir}")
+    if args.save_plots:
+        print(f"📁 Gráficos guardados en: results/evaluation/")
+
+    print("\n📖 Próximos pasos:")
+    print(
+        f"  - Ver todos los gráficos en: {val_dir if val_dir else 'runs/detect/val*/'}"
+    )
+    print(
+        f"  - Hacer predicciones: python scripts/predict.py --weights {args.weights} --source <imagen>"
+    )
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
