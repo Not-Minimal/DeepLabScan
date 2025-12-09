@@ -326,10 +326,10 @@ def main():
         plots = [
             ("confusion_matrix.png", "Matriz de Confusión"),
             ("confusion_matrix_normalized.png", "Matriz de Confusión Normalizada"),
-            ("F1_curve.png", "Curva F1-Score"),
-            ("P_curve.png", "Curva de Precision"),
-            ("R_curve.png", "Curva de Recall"),
-            ("PR_curve.png", "Curva Precision-Recall"),
+            ("BoxF1_curve.png", "Curva F1-Score"),
+            ("BoxP_curve.png", "Curva de Precision"),
+            ("BoxR_curve.png", "Curva de Recall"),
+            ("BoxPR_curve.png", "Curva Precision-Recall"),
         ]
 
         found_plots = False
