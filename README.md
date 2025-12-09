@@ -59,7 +59,14 @@ Este script:
 Balancea las clases minoritarias generando nuevas imágenes con aumentación (flip, rotación, brillo):
 
 ```bash
-python scripts/augment_data.py --data-dir data/raw --limit 0.25
+# Aumentación básica con límite del 25%
+python scripts/augment_data.py --data-dir data/raw
+
+# Con límite personalizado y semilla específica
+python scripts/augment_data.py --data-dir data/raw --limit 0.25 --seed 42
+
+# Guardando gráficos en disco
+python scripts/augment_data.py --data-dir data/raw --save-plots
 ```
 
 Parámetros:
@@ -78,7 +85,14 @@ Este script:
 ### 3. Entrenar el Modelo
 
 ```bash
+# Entrenamiento básico con 15 épocas
 python scripts/train.py --data-dir data/raw --epochs 15
+
+# Con modelo YOLO11n y batch size de 16
+python scripts/train.py --data-dir data/raw --model yolo11n.pt --epochs 50 --batch 16
+
+# Con modelo YOLOv8n, 100 épocas y CUDA
+python scripts/train.py --data-dir data/raw --model yolov8n.pt --epochs 100 --imgsz 640 --device cuda
 ```
 
 Parámetros disponibles:
@@ -101,7 +115,17 @@ El script:
 ### 4. Evaluar el Modelo
 
 ```bash
+# Evaluación básica (muestra métricas en terminal)
+python scripts/evaluate.py --weights runs/detect/train/weights/best.pt
+
+# Con directorio del dataset especificado
 python scripts/evaluate.py --weights runs/detect/train/weights/best.pt --data-dir data/raw
+
+# Guardando gráficos en disco
+python scripts/evaluate.py --weights runs/detect/train/weights/best.pt --save-plots
+
+# Sin mostrar gráficos (headless)
+python scripts/evaluate.py --weights runs/detect/train/weights/best.pt --no-show
 ```
 
 Genera:
@@ -113,7 +137,23 @@ Genera:
 ### 5. Realizar Predicciones
 
 ```bash
-python scripts/predict.py --weights runs/detect/train/weights/best.pt --source path/to/images
+# Predicción en una imagen
+python scripts/predict.py --weights runs/detect/train2/weights/best.pt --source test.jpg
+
+# Predicción en directorio con visualización
+python scripts/predict.py --weights runs/detect/train2/weights/best.pt --source images/ --show
+
+# Predicción en video
+python scripts/predict.py --weights runs/detect/train2/weights/best.pt --source video.mp4
+
+# Predicción con webcam
+python scripts/predict.py --weights runs/detect/train2/weights/best.pt --source 0 --show
+
+# Con ajustes de confidence
+python scripts/predict.py --weights runs/detect/train2/weights/best.pt --source test.jpg --conf 0.5
+
+# Guardando labels en formato YOLO
+python scripts/predict.py --weights runs/detect/train2/weights/best.pt --source test.jpg --save-txt
 ```
 
 ## Estructura del Proyecto
