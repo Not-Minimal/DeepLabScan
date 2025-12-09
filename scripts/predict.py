@@ -7,6 +7,7 @@ Este script realiza predicciones con un modelo YOLO entrenado:
 2. Realiza predicciones sobre imágenes/videos/webcam
 3. Muestra y guarda resultados con bounding boxes
 4. Imprime información de detecciones
+5. Registra resultados en Excel para comparación
 
 Uso:
     python scripts/predict.py --weights runs/detect/train/weights/best.pt --source imagen.jpg
@@ -27,6 +28,13 @@ except ImportError:
     print("❌ Error: Se requieren ultralytics, opencv-python y matplotlib")
     print("Instala con: pip install ultralytics opencv-python matplotlib")
     sys.exit(1)
+
+# Importar Excel Logger
+try:
+    from excel_logger import get_logger
+except ImportError:
+    print("⚠️  Excel logger no disponible. Los resultados no se guardarán en Excel.")
+    get_logger = None
 
 
 def display_prediction(result, show=True, save_path=None):
@@ -132,6 +140,23 @@ def main():
         type=int,
         default=300,
         help="Máximo de detecciones por imagen (default: 300)",
+    )
+    parser.add_argument(
+        "--exp-name",
+        type=str,
+        default=None,
+        help="Nombre del experimento para Excel (default: auto-generado)",
+    )
+    parser.add_argument(
+        "--notes",
+        type=str,
+        default="",
+        help="Notas adicionales sobre la predicción",
+    )
+    parser.add_argument(
+        "--no-excel",
+        action="store_true",
+        help="No guardar resultados en Excel",
     )
 
     args = parser.parse_args()
@@ -276,8 +301,10 @@ def main():
         print("\n⚠️  No se realizaron detecciones (prueba reducir --conf)")
 
     # Información de salida
+    output_dir_path = ""
     if args.save:
         output_dir = Path(args.project) / args.name
+        output_dir_path = str(output_dir)
         print(f"\n📁 Resultados guardados en: {output_dir}")
 
         # Listar algunos archivos generados
@@ -292,6 +319,31 @@ def main():
                 saved_labels = list(output_dir.glob("labels/*.txt"))
                 if saved_labels:
                     print(f"   ✓ Archivos de labels: {len(saved_labels)}")
+
+    # Guardar resultados en Excel
+    if not args.no_excel and get_logger is not None:
+        try:
+            # Generar nombre de experimento si no se proporcionó
+            exp_name = args.exp_name
+            if exp_name is None:
+                exp_name = f"predict_{Path(args.weights).parent.parent.name}"
+
+            logger = get_logger()
+            logger.log_prediction(
+                experiment_name=exp_name,
+                weights_path=str(args.weights),
+                source=str(args.source),
+                confidence=args.conf,
+                iou=args.iou,
+                device=str(device),
+                total_images=total_images,
+                total_detections=total_detections,
+                class_counts=class_counts,
+                output_dir=output_dir_path,
+                notes=args.notes,
+            )
+        except Exception as e:
+            print(f"\n⚠️  No se pudieron guardar resultados en Excel: {e}")
 
     print("\n" + "=" * 60)
     print("✓ PREDICCIÓN COMPLETADA")
@@ -309,6 +361,7 @@ def main():
         print("\n💡 Todo parece correcto!")
         print("  - Para ajustar sensibilidad: modifica --conf")
         print("  - Para filtrar detecciones superpuestas: ajusta --iou")
+        print("  - Ver comparación en Excel: results/experiment_results.xlsx")
 
 
 if __name__ == "__main__":

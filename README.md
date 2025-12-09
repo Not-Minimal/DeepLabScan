@@ -9,6 +9,7 @@ Este proyecto implementa un pipeline completo de detección de objetos utilizand
 - Aumentación de datos para balanceo de clases
 - Entrenamiento con YOLO (Ultralytics)
 - Evaluación con métricas estándar (mAP, Precision, Recall)
+- **📊 Sistema de registro en Excel** para comparar experimentos
 
 ## Instalación
 
@@ -38,6 +39,8 @@ pip install --upgrade pip setuptools wheel
 pip install -r requirements.txt
 ```
 
+**Nota**: Incluye soporte para guardar resultados en Excel (`pandas`, `openpyxl`)
+
 ## Uso
 
 ### 1. Descargar Dataset desde Roboflow
@@ -48,6 +51,187 @@ python scripts/download_roboflow_simple.py
 
 Este script:
 - Descarga el dataset desde Roboflow (URL configurada en el script)
+- Crea la estructura necesaria en `data/raw/`
+
+### 2. Entrenar Modelo
+
+```bash
+# Entrenamiento básico (guarda automáticamente en Excel)
+python scripts/train.py --data-dir data/raw --epochs 15
+
+# Con configuración personalizada y notas
+python scripts/train.py \
+    --data-dir data/raw \
+    --model yolo11n.pt \
+    --epochs 30 \
+    --name "exp_v1" \
+    --notes "Primer entrenamiento con augmentation"
+```
+
+Los resultados se guardan automáticamente en `results/experiment_results.xlsx`.
+
+### 3. Evaluar Modelo
+
+```bash
+# Evaluación básica
+python scripts/evaluate.py --weights runs/detect/train/weights/best.pt
+
+# Con nombre personalizado
+python scripts/evaluate.py \
+    --weights runs/detect/train/weights/best.pt \
+    --exp-name "eval_test" \
+    --notes "Evaluación en test set"
+```
+
+### 4. Realizar Predicciones
+
+```bash
+# Predicción en imagen
+python scripts/predict.py \
+    --weights runs/detect/train/weights/best.pt \
+    --source test_image.jpg
+
+# Predicción en directorio
+python scripts/predict.py \
+    --weights runs/detect/train/weights/best.pt \
+    --source test_images/ \
+    --conf 0.3 \
+    --exp-name "pred_v1" \
+    --notes "Predicciones con confidence 0.3"
+```
+
+## 📊 Sistema de Logging en Excel
+
+### Características
+
+- ✅ **Guardado automático** de todos los resultados
+- ✅ **4 hojas organizadas**: Resumen, Training, Evaluation, Prediction
+- ✅ **Comparación fácil** entre experimentos
+- ✅ **Identificación automática** del mejor modelo
+- ✅ **Formato profesional** con colores
+
+### Ver Resultados
+
+```bash
+# Ver resumen de todos los experimentos
+python scripts/view_results.py
+
+# Ver últimos 10 experimentos
+python scripts/view_results.py --summary --last 10
+
+# Encontrar mejor modelo
+python scripts/view_results.py --best-model
+
+# Ver solo entrenamientos
+python scripts/view_results.py --training
+
+# Comparar experimentos
+python scripts/view_results.py --compare
+
+# Exportar a CSV
+python scripts/view_results.py --export results/mi_analisis.csv
+```
+
+### Archivo Excel
+
+El archivo `results/experiment_results.xlsx` contiene:
+
+1. **Hoja Resumen**: Todos los experimentos para comparación rápida
+2. **Hoja Training**: Detalles de entrenamientos (hiperparámetros, duración, métricas)
+3. **Hoja Evaluation**: Resultados de evaluaciones (precision, recall, mAP)
+4. **Hoja Prediction**: Historial de predicciones (detecciones, clases)
+
+### Desactivar Excel Logging
+
+Si no quieres guardar en Excel:
+
+```bash
+python scripts/train.py --data-dir data/raw --epochs 15 --no-excel
+python scripts/evaluate.py --weights best.pt --no-excel
+python scripts/predict.py --weights best.pt --source img.jpg --no-excel
+```
+
+### Probar el Sistema
+
+Genera datos de ejemplo para ver cómo funciona:
+
+```bash
+python scripts/test_excel_logger.py
+```
+
+### Documentación Completa
+
+Para más detalles, consulta:
+- 📖 **Guía completa**: `EXCEL_LOGGING_GUIDE.md`
+- 📁 **Documentación del sistema**: `results/README.md`
+
+## Estructura del Proyecto
+
+```
+DeepLabScan/
+├── scripts/
+│   ├── train.py              # Entrenamiento con Excel logging
+│   ├── evaluate.py           # Evaluación con Excel logging
+│   ├── predict.py            # Predicción con Excel logging
+│   ├── excel_logger.py       # Módulo de logging
+│   ├── view_results.py       # Visualización de resultados
+│   └── test_excel_logger.py  # Script de prueba
+├── results/
+│   ├── experiment_results.xlsx  # Archivo principal
+│   └── README.md               # Documentación
+├── data/
+│   └── raw/                   # Dataset
+├── runs/                      # Resultados de entrenamientos
+├── EXCEL_LOGGING_GUIDE.md    # Guía completa del sistema
+└── requirements.txt           # Dependencias
+
+```
+
+## Métricas y Resultados
+
+### Métricas Registradas
+
+- **mAP@0.5**: Mean Average Precision con IoU=0.5
+- **mAP@0.5:0.95**: mAP promediado desde IoU 0.5 hasta 0.95
+- **Precision**: Proporción de detecciones correctas
+- **Recall**: Proporción de objetos detectados
+- **F1-Score**: Media armónica entre Precision y Recall
+
+### Interpretación
+
+- **Excelente**: mAP ≥ 0.9
+- **Bueno**: mAP 0.7-0.9
+- **Aceptable**: mAP 0.5-0.7
+- **Bajo**: mAP < 0.5 (requiere mejoras)
+
+## Mejores Prácticas
+
+### 1. Usa nombres descriptivos
+
+```bash
+python scripts/train.py \
+    --name "yolo11n_aug_batch16_v1" \
+    --notes "Con data augmentation, batch 16"
+```
+
+### 2. Documenta tus experimentos
+
+```bash
+python scripts/train.py \
+    --notes "Baseline sin augmentation para comparación"
+```
+
+### 3. Compara regularmente
+
+```bash
+python scripts/view_results.py --best-model
+python scripts/view_results.py --compare
+```
+
+### 4. Haz backups
+
+```bash
+cp results/experiment_results.xlsx results/backup_$(date +%Y%m%d).xlsx
 - Descomprime automáticamente los archivos
 - Organiza el dataset en `data/raw/` con la estructura YOLO esperada
 - Mueve `data.yaml`, `train/`, `valid/`, `test/` a la ubicación correcta

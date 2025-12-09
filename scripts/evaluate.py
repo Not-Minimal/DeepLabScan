@@ -7,6 +7,7 @@ Este script evalúa un modelo YOLO entrenado y muestra/guarda visualizaciones:
 2. Ejecuta validación con model.val()
 3. Muestra métricas (Precision, Recall, mAP, F1)
 4. Visualiza gráficos generados (confusion matrix, curves, etc.)
+5. Registra resultados en Excel para comparación
 
 Uso:
     python scripts/evaluate.py --weights runs/detect/train/weights/best.pt
@@ -27,6 +28,13 @@ except ImportError:
     print("❌ Error: Se requieren ultralytics y matplotlib")
     print("Instala con: pip install ultralytics matplotlib")
     sys.exit(1)
+
+# Importar Excel Logger
+try:
+    from excel_logger import get_logger
+except ImportError:
+    print("⚠️  Excel logger no disponible. Los resultados no se guardarán en Excel.")
+    get_logger = None
 
 
 def find_validation_results(weights_path):
@@ -138,6 +146,23 @@ def main():
         default="val",
         choices=["val", "test"],
         help="Split a evaluar (default: val)",
+    )
+    parser.add_argument(
+        "--exp-name",
+        type=str,
+        default=None,
+        help="Nombre del experimento para Excel (default: auto-generado)",
+    )
+    parser.add_argument(
+        "--notes",
+        type=str,
+        default="",
+        help="Notas adicionales sobre la evaluación",
+    )
+    parser.add_argument(
+        "--no-excel",
+        action="store_true",
+        help="No guardar resultados en Excel",
     )
 
     args = parser.parse_args()
@@ -265,15 +290,47 @@ def main():
         print(f"mAP@0.5:0.95:   {map50_95:.4f}")
 
         # Calcular F1-Score
+        f1_score = 0.0
         if precision > 0 or recall > 0:
-            f1 = (
+            f1_score = (
                 2 * (precision * recall) / (precision + recall)
                 if (precision + recall) > 0
                 else 0
             )
-            print(f"F1-Score:       {f1:.4f}")
+            print(f"F1-Score:       {f1_score:.4f}")
 
         print("=" * 60)
+
+        # Guardar resultados en Excel
+        if not args.no_excel and get_logger is not None:
+            try:
+                # Generar nombre de experimento si no se proporcionó
+                exp_name = args.exp_name
+                if exp_name is None:
+                    exp_name = f"eval_{Path(args.weights).parent.parent.name}"
+
+                # Contar clases detectadas
+                classes_detected = 0
+                if hasattr(metrics, "box") and hasattr(metrics.box, "nc"):
+                    classes_detected = metrics.box.nc
+
+                logger = get_logger()
+                logger.log_evaluation(
+                    experiment_name=exp_name,
+                    weights_path=str(args.weights),
+                    dataset=str(data_yaml),
+                    split=args.split,
+                    device=str(device),
+                    precision=float(precision),
+                    recall=float(recall),
+                    map50=float(map50),
+                    map50_95=float(map50_95),
+                    classes_detected=classes_detected,
+                    visualizations_count=0,
+                    notes=args.notes,
+                )
+            except Exception as e:
+                print(f"\n⚠️  No se pudieron guardar resultados en Excel: {e}")
 
         # Interpretación
         print("\n📊 Interpretación:")
@@ -381,6 +438,7 @@ def main():
     print(
         f"  - Hacer predicciones: python scripts/predict.py --weights {args.weights} --source <imagen>"
     )
+    print(f"  - Ver comparación en Excel: results/experiment_results.xlsx")
 
 
 if __name__ == "__main__":

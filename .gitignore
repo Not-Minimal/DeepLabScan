@@ -54,6 +54,14 @@ datasets/
 runs/
 wandb/
 
+# Results - keep Excel but ignore backups
+results/backup_*.xlsx
+results/*.csv
+results/evaluation/
+results/*/
+!results/experiment_results.xlsx
+!results/README.md
+
 # Logs
 logs/
 *.log
