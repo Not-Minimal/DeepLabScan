@@ -24,7 +24,7 @@ share/python-wheels/
 MANIFEST
 
 # Virtual Environment
-venv/
+# venv/  # Commented - need to commit venv
 env/
 ENV/
 env.bak/
@@ -45,13 +45,13 @@ venv.bak/
 
 # Model weights and data
 *.weights
-*.pt
+# *.pt  # Commented - need to commit yolo11n.pt
 *.pth
 models/weights/
-data/raw/
-data/processed/
+# data/raw/  # Commented - need to commit data/
+# data/processed/  # Commented - need to commit data/
 datasets/
-runs/
+# runs/  # Commented - need to commit runs/
 wandb/
 
 # Results - keep Excel but ignore backups

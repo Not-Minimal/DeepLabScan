@@ -1,0 +1,13 @@
+train: ../train/images
+val: ../valid/images
+test: ../test/images
+
+nc: 4
+names: ['fiber_cable', 'laser', 'paddle_polarization_controller', 'powermeter']
+
+roboflow:
+  workspace: deeplabscan
+  project: proyecto-semestral-u8pzp
+  version: 4
+  license: CC BY 4.0
+  url: https://universe.roboflow.com/deeplabscan/proyecto-semestral-u8pzp/dataset/4
